@@ -87,7 +87,8 @@ exports = module.exports = function serveIndex(root, options){
     , view = options.view || 'tiles'
     , filter = options.filter
     , template = options.template || defaultTemplate
-    , stylesheet = options.stylesheet || defaultStylesheet;
+    , stylesheet = options.stylesheet || defaultStylesheet
+    , advanced = options.advanced;
 
   return function serveIndex(req, res, next) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -152,7 +153,7 @@ exports = module.exports = function serveIndex(root, options){
 
         // not acceptable
         if (!type) return next(createError(406));
-        exports[mediaType[type]](req, res, files, next, originalDir, showUp, icons, path, view, template, stylesheet);
+        exports[mediaType[type]](req, res, files, next, originalDir, showUp, icons, path, view, template, stylesheet, advanced);
       });
     });
   };
@@ -191,27 +192,63 @@ exports.html = function(req, res, files, next, dir, showUp, icons, path, view, t
  * Respond with application/json.
  */
 
-exports.json = function(req, res, files){
-  var body = JSON.stringify(files);
-  var buf = new Buffer(body, 'utf8');
+exports.json = function(req, res, files, next, dir, showUp, icons, path, view, template, stylesheet, advanced){
+  var send = function(files) {
+    var body = JSON.stringify(files);
+    var buf = new Buffer(body, 'utf8');
 
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Content-Length', buf.length);
-  res.end(buf);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Length', buf.length);
+    res.end(buf);
+  };
+
+  if (advanced) {
+    stat(path, files, function(err, stats){
+      send(files.map(function(file, i){
+        var arr = statToArray(stats[i]);
+        arr.unshift(file);
+        return arr;
+      }));
+    });
+  } else {
+    send(files);
+  }
 };
 
 /**
  * Respond with text/plain.
  */
 
-exports.plain = function(req, res, files){
-  var body = files.join('\n') + '\n';
-  var buf = new Buffer(body, 'utf8');
+exports.plain = function(req, res, files, next, dir, showUp, icons, path, view, template, stylesheet, advanced){
+  var send = function(files) {
+    var body = files.join('\n') + '\n';
+    var buf = new Buffer(body, 'utf8');
 
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.setHeader('Content-Length', buf.length);
-  res.end(buf);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Length', buf.length);
+    res.end(buf);
+  };
+
+  if (advanced) {
+    stat(path, files, function(err, stats){
+      send(files.map(function(file, i){
+        var arr = statToArray(stats[i]);
+        arr.unshift(file);
+        return arr.join(':');
+      }));
+    });
+  } else {
+    send(files);
+  }
 };
+
+/**
+ * Map stat values to a linear array.
+ */
+
+function statToArray(stat) {
+  return [ stat.size, (stat.mtime.getTime() / 1000).toFixed() ];
+}
 
 /**
  * Sort function for with directories first.
