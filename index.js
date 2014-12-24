@@ -206,7 +206,7 @@ exports.json = function(req, res, files, next, dir, showUp, icons, path, view, t
     stat(path, files, function(err, stats){
       send(files.map(function(file, i){
         var arr = statToArray(stats[i]);
-        arr.unshift(file);
+        arr.unshift(file + (stats[i].isDirectory() ? '/' : ''));
         return arr;
       }));
     });
@@ -233,7 +233,7 @@ exports.plain = function(req, res, files, next, dir, showUp, icons, path, view, 
     stat(path, files, function(err, stats){
       send(files.map(function(file, i){
         var arr = statToArray(stats[i]);
-        arr.unshift(file);
+        arr.unshift(file + (stats[i].isDirectory() ? '/' : ''));
         return arr.join(':');
       }));
     });
